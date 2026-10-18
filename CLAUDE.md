@@ -1,8 +1,9 @@
 # CLAUDE.md — atlasent-keys (public trust root)
 
 Public verification material and trust root for AtlaSent. This repo is a
-static Nginx host — a five-line Dockerfile copies the repo contents into
-`/usr/share/nginx/html` and serves them over HTTP at `keys.atlasent.io`.
+static Nginx host: the Dockerfile copies an allowlist of published paths
+(`.well-known/`, `cosign.pub`, `schemas/`, `docs/`) into `/usr/share/nginx/html`
+and serves them over HTTP at `keys.atlasent.io`.
 
 > **Rename in progress.** `atlasent-keys` is being renamed
 > `atlasent-trust-root`. See `RENAME_PROPOSAL.md` for the phased plan.
@@ -27,9 +28,22 @@ There is no `package.json`. This repo is not an npm package. Its
 
 ```
 FROM nginx:alpine
-COPY . /usr/share/nginx/html
+COPY nginx/default.conf /etc/nginx/conf.d/default.conf
+COPY --chmod=755 nginx/11-atlasent-listen-on-ipv6.sh /docker-entrypoint.d/
+RUN rm -f /usr/share/nginx/html/index.html
+COPY .well-known /usr/share/nginx/html/.well-known
+COPY cosign.pub /usr/share/nginx/html/cosign.pub
+COPY schemas /usr/share/nginx/html/schemas
+COPY docs /usr/share/nginx/html/docs
 EXPOSE 80
 ```
+
+**Only those four paths are served.** Repository files (this file, workflows,
+scripts, `nginx/`, README) are not published, so nothing committed for
+maintainers becomes content on the trust-root origin. Add a path to the
+Dockerfile only when it is meant to be fetched from `keys.atlasent.io`, and
+add it to `scripts/check-serve-config.sh` too. That check asserts both
+directions: published paths serve the repo's exact bytes, internals 404.
 
 The deployed host is `https://keys.atlasent.io` (future: `https://trust-root.atlasent.io`).
 

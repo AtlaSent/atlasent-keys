@@ -5,9 +5,9 @@ Public verification material and trust root for AtlaSent.
 > **What this repo is (and is NOT).**
 >
 > **Is:** A static HTTP host serving AtlaSent's published public
-> verification keys and trust-root documents. The container is a
-> five-line Nginx image that copies the repo root into
-> `/usr/share/nginx/html`. Assets include `cosign.pub` (used to verify
+> verification keys and trust-root documents. The container is an
+> Nginx image that copies only the published paths (`.well-known/`,
+> `cosign.pub`, `schemas/`, `docs/`) into `/usr/share/nginx/html`. Assets include `cosign.pub` (used to verify
 > signed runtime artifacts) and the `.well-known/` trust-root index,
 > verifier-keys JWKS, accepted Sigstore identities, and revocation list.
 >
@@ -42,16 +42,12 @@ Public verification material and trust root for AtlaSent.
 
 ## How it ships
 
-The Dockerfile is intentionally minimal:
-
-```dockerfile
-FROM nginx:alpine
-COPY . /usr/share/nginx/html
-EXPOSE 80
-```
-
-Building the image produces a container that serves every file at the
-repo root over HTTP. Consumers (cosign, CI verifiers, deployment gates)
+The Dockerfile is intentionally small. On top of `nginx:alpine` it adds a
+read-only CORS config and copies an allowlist of published paths:
+`.well-known/`, `cosign.pub`, `schemas/` and `docs/`. Nothing else in the
+repository is served. `scripts/check-serve-config.sh` builds the image and
+asserts both directions: published paths serve the repo's exact bytes, and
+repository files return 404. Consumers (cosign, CI verifiers, deployment gates)
 fetch the public verification material and validate signatures without
 requiring access to AtlaSent private infrastructure.
 
