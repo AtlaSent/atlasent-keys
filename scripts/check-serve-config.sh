@@ -1,5 +1,7 @@
 #!/usr/bin/env bash
 # Builds the real image and asserts what a browser verifier depends on:
+#   - only the published trust-root paths are served, byte for byte, and
+#     repository internals (CLAUDE.md, workflows, scripts) are not;
 #   - the verifier keys JSON is served with Access-Control-Allow-Origin: *
 #     and application/json, with the exact bytes in the repo;
 #   - a CORS preflight is answered 204 with the same header;
@@ -45,6 +47,20 @@ check "preflight Allow-Origin *"          "grep -qiE '^access-control-allow-orig
 check "never Allow-Credentials"           "! grep -qi '^access-control-allow-credentials' <<<\"\$get_h\$pre_h\""
 check "POST refused (403/405)"            "[ \"$post_code\" = 403 ] || [ \"$post_code\" = 405 ]"
 rm -f /tmp/serve-check-body.$$
+
+# What is published, and only that. Every published path must be served with
+# the repo's exact bytes; repository internals and the stock welcome page must
+# not be served at all.
+for pub in /cosign.pub /.well-known/atlasent-trust-root.json /.well-known/atlasent-trust-root.json.bundle \
+           /schemas/trust-root/v1/atlasent-verifier-keys.schema.json /docs/permit-signing-keys.json; do
+  check "serves $pub with the repo's bytes" "curl -sf '$url$pub' | cmp -s - .$pub"
+done
+for internal in /50x.html /index.html /CLAUDE.md /Dockerfile /RENAME_PROPOSAL.md /README.md /nginx/default.conf \
+                /scripts/check-serve-config.sh /.github/workflows/publish-trust-root.yml; do
+  code="$(curl -s -o /dev/null -w '%{http_code}' "$url$internal")"
+  check "does not serve $internal (got $code)" "[ \"$code\" = 404 ]"
+done
+check "no stock nginx welcome page at /" "! curl -s '$url/' | grep -qi 'welcome to nginx'"
 
 # IPv6 listener: the stock entrypoint skips a modified default.conf, so our
 # own entrypoint script must add it when the host has IPv6 and leave the
