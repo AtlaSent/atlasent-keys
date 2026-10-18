@@ -30,7 +30,7 @@ There is no `package.json`. This repo is not an npm package. Its
 FROM nginx:alpine
 COPY nginx/default.conf /etc/nginx/conf.d/default.conf
 COPY --chmod=755 nginx/11-atlasent-listen-on-ipv6.sh /docker-entrypoint.d/
-RUN rm -f /usr/share/nginx/html/index.html
+RUN find /usr/share/nginx/html -mindepth 1 -delete
 COPY .well-known /usr/share/nginx/html/.well-known
 COPY cosign.pub /usr/share/nginx/html/cosign.pub
 COPY schemas /usr/share/nginx/html/schemas

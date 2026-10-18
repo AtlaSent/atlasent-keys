@@ -55,7 +55,7 @@ for pub in /cosign.pub /.well-known/atlasent-trust-root.json /.well-known/atlase
            /schemas/trust-root/v1/atlasent-verifier-keys.schema.json /docs/permit-signing-keys.json; do
   check "serves $pub with the repo's bytes" "curl -sf '$url$pub' | cmp -s - .$pub"
 done
-for internal in /CLAUDE.md /Dockerfile /RENAME_PROPOSAL.md /README.md /nginx/default.conf \
+for internal in /50x.html /index.html /CLAUDE.md /Dockerfile /RENAME_PROPOSAL.md /README.md /nginx/default.conf \
                 /scripts/check-serve-config.sh /.github/workflows/publish-trust-root.yml; do
   code="$(curl -s -o /dev/null -w '%{http_code}' "$url$internal")"
   check "does not serve $internal (got $code)" "[ \"$code\" = 404 ]"
