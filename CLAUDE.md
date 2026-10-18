@@ -33,6 +33,16 @@ EXPOSE 80
 
 The deployed host is `https://keys.atlasent.io` (future: `https://trust-root.atlasent.io`).
 
+The image replaces nginx's stock server config with `nginx/default.conf`,
+which adds read-only CORS (`Access-Control-Allow-Origin: *`, GET/HEAD/OPTIONS
+only, never credentials) so in-browser verifiers can fetch the trust root.
+`scripts/check-serve-config.sh` (CI: `serve-config.yml`) builds the real
+image and asserts this; its `--self-test` must fail against stock nginx. Do
+not drop either half. Because the config differs from the packaged one,
+nginx:alpine's entrypoint no longer adds `listen [::]:80`;
+`nginx/11-atlasent-listen-on-ipv6.sh` re-adds it, only on hosts with IPv6
+(the check covers both cases).
+
 ## Assets served
 
 | Path | Description |

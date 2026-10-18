@@ -1,0 +1,39 @@
+name: serve-config
+
+# Builds the real keys.atlasent.io image and checks what in-browser verifiers
+# depend on (CORS read access to the trust root, exact bytes, JSON type, no
+# credentials, no write methods), then proves the check can fail by running it
+# against stock nginx (--self-test). See scripts/check-serve-config.sh.
+
+on:
+  pull_request:
+    paths:
+      - Dockerfile
+      - nginx/**
+      - scripts/check-serve-config.sh
+      - .github/workflows/serve-config.yml
+  push:
+    branches: [main]
+    paths:
+      - Dockerfile
+      - nginx/**
+      - scripts/check-serve-config.sh
+      - .github/workflows/serve-config.yml
+
+concurrency:
+  group: serve-config-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+permissions:
+  contents: read
+
+jobs:
+  serve-config:
+    name: Trust-root host serves CORS-readable files
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Check the real image
+        run: ./scripts/check-serve-config.sh
+      - name: Self-test (the check must reject stock nginx)
+        run: PORT=18081 ./scripts/check-serve-config.sh --self-test
