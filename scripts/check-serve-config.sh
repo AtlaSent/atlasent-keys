@@ -46,6 +46,20 @@ check "never Allow-Credentials"           "! grep -qi '^access-control-allow-cre
 check "POST refused (403/405)"            "[ \"$post_code\" = 403 ] || [ \"$post_code\" = 405 ]"
 rm -f /tmp/serve-check-body.$$
 
+# IPv6 listener: the stock entrypoint skips a modified default.conf, so our
+# own entrypoint script must add it when the host has IPv6 and leave the
+# config alone when it does not. Both branches are exercised in a throwaway
+# container (the "IPv6 available" marker is simulated). Only nginx's
+# "syntax is ok" line is asserted: nginx -t also opens sockets, which fails
+# for [::]:80 on a runner without IPv6 even though the config is valid.
+v6_on="$(docker run --rm --entrypoint sh -e ATLASENT_IF_INET6=/etc/hostname "$tag" -c \
+  '/docker-entrypoint.d/11-atlasent-listen-on-ipv6.sh >/dev/null 2>&1 || exit 9; grep -c "listen  \[::\]:80;" /etc/nginx/conf.d/default.conf; nginx -t 2>&1 | grep -q "syntax is ok" && echo parse-ok' 2>/dev/null || true)"
+v6_off="$(docker run --rm --entrypoint sh -e ATLASENT_IF_INET6=/nonexistent "$tag" -c \
+  '/docker-entrypoint.d/11-atlasent-listen-on-ipv6.sh >/dev/null 2>&1 || exit 9; grep -c "listen  \[::\]:80;" /etc/nginx/conf.d/default.conf || true' 2>/dev/null || true)"
+v6_expected="$(printf '1\nparse-ok')"
+check "IPv6 host: listen [::]:80 added once, config parses" '[ "$v6_on" = "$v6_expected" ]'
+check "IPv4-only host: config left without an IPv6 listener" "[ \"\$v6_off\" = 0 ]"
+
 if [ "$mode" = "--self-test" ]; then
   if [ "$fail" = 1 ]; then echo "self-test ok: the checks reject the stock config"; exit 0; fi
   echo "self-test FAILED: the checks passed against stock nginx, so they prove nothing"; exit 1
