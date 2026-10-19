@@ -24,11 +24,18 @@ name: publish-trust-root
 on:
   push:
     branches: [main]
+    # Only what changes the signed, published material or how it is checked.
+    # The sign-and-publish job behind this trigger is approval-gated, and
+    # Railway waits for this check before deploying keys.atlasent.io, so a
+    # push that touches only serving or operator tooling (e.g.
+    # scripts/check-serve-config.sh, which serve-config.yml tests) must not
+    # run it: a denied gate there blocked the #42 and #43 serve fixes from
+    # ever deploying. Pull requests still validate on every scripts/ change.
     paths:
       - '.well-known/**'
       - 'schemas/trust-root/**'
       - 'docs/**'
-      - 'scripts/**'
+      - 'scripts/verify-trust-root-integrity.mjs'
       - 'cosign.pub'
       - '.github/workflows/publish-trust-root.yml'
   pull_request:
