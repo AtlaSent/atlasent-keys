@@ -1,0 +1,16 @@
+{
+  "schema_version": 1,
+  "rule": "Only the accounts below may start, or re-run, a job that can sign and publish the trust root. Matched by numeric GitHub user id, never by login. Enforced by .github/actions/production-dispatcher-check as the first step of every such job; scripts/check-production-dispatcher.mjs --verify-workflows (publish-trust-root.yml's validate job) fails the build if a protected job lacks it. Adding a person is a reviewed change to this file plus a DECISION_LEDGER entry in atlasent-internal.",
+  "dispatchers": [
+    {
+      "id": 220954482,
+      "login": "bettyc925",
+      "added": "2026-10-29",
+      "basis": "Founder and AtlaSent's one accountable human (DECISION_LEDGER 2026-10-02). Every trust-root publish so far was hers; this file makes that a check instead of a habit."
+    }
+  ],
+  "protected_environments": [
+    "trust-root-publish"
+  ],
+  "reporting_steps": {}
+}

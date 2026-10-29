@@ -154,6 +154,17 @@ touching `.well-known/**`, with no authorization check at all.
   rotation might be that something is compromised. The override is a
   reviewed PR that temporarily removes the gate step, never a silent
   bypass flag.
+- **Only listed people may publish (2026-10-29).** `sign-and-publish` first
+  runs `./.github/actions/production-dispatcher-check`, which refuses unless
+  the person who pushed, merged or dispatched, and anyone re-running the
+  attempt, is listed by numeric user id in `.github/production-dispatchers.json`.
+  So a trust-root PR merged by anyone else fails at that step and nothing is
+  signed or served; the founder merges trust-root PRs. The `validate` job
+  runs `scripts/check-production-dispatcher.mjs --self-test` and
+  `--verify-workflows`. A workflow edited on another branch is not covered;
+  that needs the `trust-root-publish` environment's deployment branches set
+  to `main`. Add a dispatcher only by a reviewed change to that file plus a
+  DECISION_LEDGER entry.
 
 ## Schemas
 

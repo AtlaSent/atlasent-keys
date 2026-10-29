@@ -46,6 +46,8 @@ on:
       - 'scripts/**'
       - 'cosign.pub'
       - '.github/workflows/publish-trust-root.yml'
+      - '.github/production-dispatchers.json'
+      - '.github/actions/production-dispatcher-check/**'
   workflow_dispatch: {}
 
 permissions:
@@ -112,6 +114,20 @@ jobs:
         # scripts/verify-trust-root-integrity.mjs for the source.
         run: node scripts/verify-trust-root-integrity.mjs
 
+      # The sign-and-publish job must check its dispatcher before anything else.
+      # js-yaml is installed, pinned, outside the workspace (this repo has no
+      # package.json).
+      - name: Install js-yaml 4.3.2 for the dispatcher guard
+        run: npm install --prefix "$RUNNER_TEMP/dispatcher-guard-yaml" js-yaml@4.3.2 --no-audit --no-fund --no-save
+      - name: Prove the dispatcher guard rejects the defects it targets
+        env:
+          JS_YAML_MODULE: ${{ runner.temp }}/dispatcher-guard-yaml/node_modules/js-yaml/dist/js-yaml.mjs
+        run: node scripts/check-production-dispatcher.mjs --self-test
+      - name: Check the publish job runs the dispatcher check first
+        env:
+          JS_YAML_MODULE: ${{ runner.temp }}/dispatcher-guard-yaml/node_modules/js-yaml/dist/js-yaml.mjs
+        run: node scripts/check-production-dispatcher.mjs --verify-workflows
+
   sign-and-publish:
     name: sign and publish signatures
     needs: validate
@@ -124,6 +140,12 @@ jobs:
           token: ${{ secrets.GITHUB_TOKEN }}
           # Pull just enough history to push back to main.
           fetch-depth: 1
+
+      # Only listed people may sign and publish the trust root. A push to main
+      # runs this job as whoever pushed or merged; a dispatch, as whoever
+      # dispatched. See .github/production-dispatchers.json.
+      - name: Check the dispatcher
+        uses: ./.github/actions/production-dispatcher-check
 
       # ── AtlaSent publish gate ────────────────────────────────────────
       # Dogfooding fix: this job used to auto-sign and republish the
